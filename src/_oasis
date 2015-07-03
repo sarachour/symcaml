@@ -1,0 +1,13 @@
+OASISFormat: 0.4
+Name:        symcaml
+Version:     0.01a
+Synopsis:    ocaml bindings for sympy
+Authors:     sachour@mit.edu
+License:     BSD-2-clause
+Plugins:     META (0.4), StdFiles (0.4)
+
+Library symcaml
+  Path:       .
+  BuildTools: ocamlbuild
+  Modules:    SymCaml
+  BuildDepends: pycaml  

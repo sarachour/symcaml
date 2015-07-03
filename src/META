@@ -1,0 +1,12 @@
+# OASIS_START
+# DO NOT EDIT (digest: a8f858d829720b703723d245f54937c6)
+version = "0.01a"
+description = "ocaml bindings for sympy"
+requires = "pycaml"
+archive(byte) = "symcaml.cma"
+archive(byte, plugin) = "symcaml.cma"
+archive(native) = "symcaml.cmxa"
+archive(native, plugin) = "symcaml.cmxs"
+exists_if = "symcaml.cma"
+# OASIS_STOP
+

@@ -19,4 +19,4 @@ repo:
 	cp Makefile git-repo/symcaml/src/
 	cp *.py git-repo/symcaml/src/
 	cd git-repo/symcaml/; git commit -a 
-	git-repo/symcaml/; git push origin
+	cd git-repo/symcaml/; git push origin

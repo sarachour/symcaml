@@ -20,3 +20,4 @@ repo:
 	cp *.py git-repo/symcaml/src/
 	cd git-repo/symcaml/; git commit -a 
 	cd git-repo/symcaml/; git push origin
+	cd git-repo/symcaml/; git status

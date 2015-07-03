@@ -1,5 +1,6 @@
 
 DEPS=*.ml
+EXTERN_REPO_ROOT=git-repo/symcaml
 #LIBS=-package extlib  -package yojson -package z3 -package z3overlay
 all: symcaml_test
 
@@ -10,3 +11,12 @@ symcaml_test: $(DEPS)
 
 clean:
 	ocamlbuild -clean
+
+repo:
+	cp *.ml git-repo/symcaml/src/
+	cp *.mll git-repo/symcaml/src/
+	cp *.mly git-repo/symcaml/src/
+	cp Makefile git-repo/symcaml/src/
+	cp *.py git-repo/symcaml/src/
+	cd git-repo/symcaml/; git commit -a 
+	git-repo/symcaml/; git push origin

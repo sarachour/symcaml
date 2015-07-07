@@ -1432,3 +1432,31 @@ value pymodule_initmodule( value name, value funclist ) {
 
     CAMLreturn(Val_unit);
 }
+
+/* T.F.: we may want to pywrap in such a way that we steal the reference: */
+static value pywrap_steal( PyObject *obj )
+{
+    CAMLparam0();
+    CAMLlocal1(v);
+
+    v = caml_alloc_custom( &pyops, sizeof( PyObject * ), 100, 30000000 );
+    *((PyObject **)Data_custom_val(v)) = obj;
+    CAMLreturn(v);
+}
+
+value pylist_toarray( value pylist ) {
+    CAMLparam1(pylist);
+    PyObject *obj = pyunwrap(pylist);
+    int i,len;
+    CAMLlocal1(rv);
+
+    rv = caml_alloc_tuple( PySequence_Size(obj) );
+
+    len=PySequence_Size(obj);
+
+    for( i = 0; i < len; i++ )
+   Store_field(rv,i,pywrap_steal(PySequence_GetItem(obj,i)));
+
+    CAMLreturn(rv);
+}
+

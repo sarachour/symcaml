@@ -27,9 +27,27 @@ type pyobject_type =
   | NullType
   | TypeType
   | OtherType
-      
+
+type py_opid = 
+  | Py_LT 
+  | Py_LE
+  | Py_EQ 
+  | Py_NE 
+  | Py_GT 
+  | Py_GE
+
+let opid2int (oid: py_opid) : int = 
+    match oid with
+    | Py_LT -> 0
+    | Py_LE -> 1
+    | Py_EQ -> 2
+    | Py_NE -> 3
+    | Py_GT -> 4 
+    | Py_GE -> 5
       (* Function list *)
-      
+
+external pylist_toarray : pyobject -> pyobject array = "pylist_toarray"
+
 external getfuncarray : unit -> funcent array = "pygetfuncarray"
 let py_funcs = getfuncarray () 
 external pytype : pyobject -> pyobject_type = "pytype"

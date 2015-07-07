@@ -26,6 +26,8 @@ sig
    val list2tuple: pyobject list -> pyobject
    val pyobj2str: pyobject -> string 
    val pyobj2repr: pyobject -> pyobject
+   val pydict2ml: pyobject -> (pyobject*pyobject -> 'a*'b) -> (('a*'b) list)
+   val find_var : wrapper ref -> pyobject -> string
    val report: wrapper ref -> unit
    val is_null : pyobject -> bool
 
@@ -92,18 +94,28 @@ struct
 
 
    let pyobj2str (o:pyobject):string = 
-      pystring_asstring o
+      let x = pystring_asstring o in 
+      handle_err();
+      x
 
    let pyobj2repr (o:pyobject):pyobject = 
-      pyobject_repr o
+      let x = pyobject_repr o in 
+      handle_err();
+      x
 
    let list2tuple (lst:pyobject list): pyobject =
       if List.length lst  = 0 then pytuple_empty
       else
          let arr = Array.of_list lst in 
          let tup = pytuple_fromarray arr in 
+         handle_err();
          tup
 
+   let pydict2ml (obj:pyobject) (fxn:(pyobject*pyobject)->('a*'b)) : ('a*'b) list = 
+         let keys = Array.to_list (pylist_toarray (pydict_keys obj)) in 
+         let elems = List.map (fun k -> let v = pydict_getitem(obj,k) in handle_err(); (k,v)) keys in 
+         List.map fxn elems
+      
    let report w : unit =
       run("print repr(env);"); 
       run("print repr(tmp);")
@@ -147,6 +159,22 @@ struct
          | None -> raise (PyCamlWrapperException ("variable "^name^" not found in environment."))
       in
       (n,obj)
+
+   let find_var (w:wrapper ref) (obj: pyobject) =
+      let compose ((k,v):pyobject*pyobject) : string*pyobject = 
+         let key = pyobj2str k in 
+         let vl = v in 
+         (key,vl)
+      in
+      let cmpobjs (name,inst) = 
+         let r = pyobject_richcomparebool(inst,obj,(opid2int Py_EQ)) in
+         r <> 0
+      in 
+      let evl = pydict2ml (_uw w).venv compose in
+      match List.filter cmpobjs evl with
+         |[(name,_)] -> name 
+         | [] -> raise (PyCamlWrapperException ("variable resembling argument not found in environment."))
+         | _ -> raise (PyCamlWrapperException ("argument has multiple variable names."))
 
    let clear (w:wrapper ref) = 
       run("env = {}");
@@ -214,11 +242,6 @@ sig
    val eval : symcaml -> spy_expr -> spy_expr
    val simpl : symcaml -> spy_expr -> spy_expr
    val pattern: symcaml -> spy_expr -> spy_expr -> (string*spy_expr) list
-(*
-   val simpl : symcaml -> spy_expr -> spy_expr
-   val eval : symcaml -> spy_expr -> spy_expr
-   val pattern: symcaml -> spy_expr -> spy_expr -> (string*spy_expr) list
-*)
 end = 
 struct 
    type symcaml = {
@@ -338,6 +361,12 @@ struct
          | None-> raise (SymCamlFunctionException("simpl","unexpected: null callee."))
       
    let pattern (s:symcaml) (e:spy_expr) (pat: spy_expr) : (string*spy_expr) list =
+      let transform (key,v) : (string*spy_expr) = 
+         let nk = _rprint key in 
+         let expr = _pyobj2expr s v in 
+         let realname = PyCamlWrapper.find_var (_wr s) key in
+         (realname,expr)
+      in
       let ecmd = (expr2py s (Paren e)) in 
       let patcmd = (expr2py s (Paren pat)) in
       let eobj = PyCamlWrapper.eval  (_wr s) ecmd in 
@@ -345,11 +374,9 @@ struct
          match (eobj,patobj) with
          | (Some(texpr),Some(tpat)) -> 
             begin
-            Printf.printf ("%s : %s  = %s : %s \n") ecmd patcmd (_rprint texpr) (_rprint tpat);
             match PyCamlWrapper.invoke_from (_wr s)  texpr "match" [tpat] [] with
             | Some(res) -> 
-               Printf.printf "REPR:%s\n" (_rprint res);
-               []
+               let assigns = PyCamlWrapper.pydict2ml res transform in Printf.printf "-------\n"; assigns
             | None -> raise (SymCamlFunctionException("pattern","unexpected: null result."))
             end
          | _ -> raise (SymCamlFunctionException("pattern","unexpected: null callee or argument."))
@@ -384,7 +411,7 @@ let main () =
    Printf.printf "expand: %s\n" (SymCaml.expr2py s res);
    let res = SymCaml.pattern s (Exp(c,Integer(3))) ex in 
    Printf.printf "pattern: %s\n" (List.fold_right 
-      (fun ((n,e):string*spy_expr) (r:string) -> r^"\n"^n^":"^(SymCaml.expr2py s e))
+      (fun ((n,e):string*spy_expr) (r:string) -> r^"\n    "^n^":"^(SymCaml.expr2py s e))
       res "assignments:");
    let res = SymCaml.eval s e in
    Printf.printf "doit: %s\n" (SymCaml.expr2py s res);

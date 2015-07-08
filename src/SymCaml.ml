@@ -16,7 +16,7 @@ sig
    val set_debug : symcaml -> bool -> unit
    val define_symbol : symcaml ->  string -> symexpr
    val define_expr : symcaml -> string -> symexpr -> symexpr
-   val define_wildcard: symcaml -> string -> symexpr list -> symexpr
+   val define_wildcard: symcaml -> string -> symvar list -> symexpr
    val define_function: symcaml -> string -> symexpr
    val clear : symcaml -> unit
    val expr2py : symcaml -> symexpr -> string
@@ -24,7 +24,7 @@ sig
    val expand : symcaml -> symexpr -> symexpr
    val eval : symcaml -> symexpr -> symexpr
    val simpl : symcaml -> symexpr -> symexpr
-   val pattern: symcaml -> symexpr -> symexpr -> (string*symexpr) list
+   val pattern: symcaml -> symexpr -> symexpr -> ((string*symexpr) list) option
    val report : symcaml -> unit
 end = 
 struct 
@@ -51,7 +51,7 @@ struct
 
    let set_debug s b = 
       s.debug := b; ()
-      
+
    let expr2py (s:symcaml) (e:symexpr) : string= 
       let rec _expr2py (e:symexpr) : string = 
          let exprlst2py (fn:'a -> string -> string) (lst:'a list) : string =
@@ -101,9 +101,9 @@ struct
       let _ = PyCamlWrapper.define (_wr s) x stre in 
       Symbol(x)
 
-   let define_wildcard (s:symcaml) (x:string) (exns:symexpr list) : symexpr = 
+   let define_wildcard (s:symcaml) (x:string) (exns:symvar list) : symexpr = 
       let opt_arg = match exns with
-         | h::t -> "["^(List.fold_right (fun x r -> r^","^(expr2py s x)) t (expr2py s h))^"]"
+         | h::t -> "["^(List.fold_right (fun x r -> r^","^(x)) t h)^"]"
          | [] -> "[]"
       in 
       let cmd ="Wild(\""^x^"\",exclude="^opt_arg^")" in 
@@ -170,7 +170,7 @@ struct
             end
          | None-> raise (SymCamlFunctionException("simpl","unexpected: null callee."))
       
-   let pattern (s:symcaml) (e:symexpr) (pat: symexpr) : (string*symexpr) list =
+   let pattern (s:symcaml) (e:symexpr) (pat: symexpr) : ((string*symexpr) list) option =
       let transform (key,v) : (string*symexpr) = 
          let nk = _rprint key in 
          let expr = _pyobj2expr s v in 
@@ -179,6 +179,7 @@ struct
       in
       let ecmd = (expr2py s (Paren e)) in 
       let patcmd = (expr2py s (Paren pat)) in
+      dbg s (fun () -> Printf.printf "match: %s -> %s\n" ecmd patcmd);
       let eobj = PyCamlWrapper.eval  (_wr s) ecmd in 
       let patobj = PyCamlWrapper.eval  (_wr s) patcmd in 
          match (eobj,patobj) with
@@ -186,8 +187,8 @@ struct
             begin
             match PyCamlWrapper.invoke_from (_wr s)  texpr "match" [tpat] [] with
             | Some(res) -> 
-               let assigns = PyCamlWrapper.pydict2ml res transform in Printf.printf "-------\n"; assigns
-            | None -> raise (SymCamlFunctionException("pattern","unexpected: null result."))
+               let assigns = PyCamlWrapper.pydict2ml res transform in Some assigns
+            | None -> None
             end
          | _ -> raise (SymCamlFunctionException("pattern","unexpected: null callee or argument."))
       

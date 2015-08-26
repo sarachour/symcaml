@@ -1,21 +1,19 @@
 
-
-all: _build
-
-_build: setup.ml
-	ocaml setup.ml -configure
-	ocaml setup.ml -build 
-	ocaml setup.ml -doc 
-
-setup.ml:
-	oasis setup 
+all:build 
 
 install:
-	oasis2opam --local 
-	opam pin add pycaml .
+	ocaml setup.ml -install 
 
-uninstall:
-	opam remove pycaml
+build:setup.data setup.ml
+	ocaml setup.ml -build
+
+setup.data:setup.ml
+	ocaml setup.ml -configure
+
+setup.ml:_oasis
+	oasis setup -setup-update dynamic
+_oasis:
+	./init.sh
 
 clean:
-	ocaml setup.ml -clean 
+	rm -f setup.* _oasis

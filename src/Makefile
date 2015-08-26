@@ -1,12 +1,23 @@
 
-DEPS=*.ml
-#LIBS=-package extlib  -package yojson -package z3 -package z3overlay
-all: symcaml_test
+all:build 
 
-symcaml_test: $(DEPS)
-	$(ARGS) ocamlbuild -use-ocamlfind SymCaml.native
+test: 
+	ocamlbuild -use-ocamlfind SymCaml.native
 	mv SymCaml.native symcaml_test
 	chmod +x symcaml_test
 
+
+install:
+	ocaml setup.ml -install 
+
+build:setup.data setup.ml
+	ocaml setup.ml -build
+
+setup.data:setup.ml
+	ocaml setup.ml -configure
+
+setup.ml:_oasis
+	oasis setup -setup-update dynamic
+
 clean:
-	ocamlbuild -clean
+	rm -f setup.* _oasis

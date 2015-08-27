@@ -41,8 +41,10 @@ arg:
     let name = $1 and varname = $3 in
     if name = "Symbol" then
       Symbol(varname)
+    else if name = "Wild" then
+      Symbol(varname)
     else 
-      raise (SymCamlParserError "only symbols can have token arguments")
+      raise (SymCamlParserError ("only symbols can have token arguments: "^name^":"^varname))
   }
   | TOKEN OPARAN INTEGER CPARAN {
     let name = $1 and value = $3 in
@@ -73,6 +75,7 @@ arg:
     | ("Pow",2) -> Exp(List.nth lst 0,List.nth lst 1)
     | ("Add",_) -> Add(lst)
     | ("Mul",_) -> Mult(lst)
+    | ("Equality",2) -> Eq(List.nth lst 0,List.nth lst 1)
     | ("Derivative",_) -> 
       begin
       match lst with 

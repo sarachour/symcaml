@@ -3,6 +3,11 @@
    open Printf
 }
 
+let decimal =  ['-']? ['0'-'9']+'.'['0'-'9']+
+let integer = ['-']? ['0'-'9']+'.'?
+let token = ['A'-'Z' 'a'-'z' '_']+['A'-'Z' 'a'-'z' '_' '0'-'9' ':' '|' '.']*
+let str = ['''][^ ''']*[''']
+
 rule main = parse
    |[' ''\t''\n'] {main lexbuf}
    | [','] {COMMA}
@@ -10,15 +15,15 @@ rule main = parse
    | ['('] {OPARAN}
    | [')'] {CPARAN}
    | ['"'] {QUOTE}
-   | ['A'-'Z' 'a'-'z' '_']+['A'-'Z' 'a'-'z' '_' '0'-'9' '|' '.']* as word {
+   | token as word {
          flush_all();
          TOKEN(word)
       }
-   | ['''][^ ''']*['''] as word {
+   | str as word {
          let qword = List.nth (Str.split (Str.regexp "\'") word) 0 in
          flush_all();
          QTOKEN(qword)
       }
-   | ['-']? ['0'-'9']+'.'['0'-'9']+ as dec {DECIMAL(float_of_string dec)}
-   | ['-']? ['0'-'9']+'.'? as dec         {INTEGER(int_of_string dec)}
+   | decimal as dec {DECIMAL(float_of_string dec)}
+   | integer as i   {INTEGER(int_of_string i)}
    | eof {EOF}

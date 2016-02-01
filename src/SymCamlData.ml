@@ -7,86 +7,97 @@ exception PyCamlWrapperException of string;;
 type symvar = string
 
 
-type symexpr = 
+type op2 =
+  | Exp
+  | Div
+  | Eq
+
+type op1 =
+  | Paren
+  | Cos
+  | Sin
+  | Tan
+  | NatExp
+  | Deriv of (symvar*int) list
+  | Integral of symvar
+  | Neg
+
+type opn =
+  | Sub
+  | Add
+  | Mult
+  | Function of symvar
+
+
+type symexpr =
    | Symbol of symvar
-   | Integral of symexpr*symvar
-   | Cos of symexpr
-   | Sin of symexpr
-   | Tan of symexpr
-   | Mult of symexpr list
-   | Add of symexpr list
-   | Exp of symexpr*symexpr
-   | Div of symexpr*symexpr
-   | Deriv of symexpr*((symvar*int) list)
-   | NatExp of symexpr
-   | Sub of symexpr list
-   | Paren of symexpr
+   | Op1 of op1*symexpr
+   | Op2 of op2*symexpr*symexpr
+   | OpN of opn*(symexpr list)
    | Decimal of float
    | Integer of int
-   | Function of symvar*(symexpr list)
-   | Eq of symexpr*symexpr
 
-module SymExpr : 
+module SymExpr :
 sig
    val get_vars: symexpr -> string list
    val expr2str: symexpr -> string
-end = 
+end =
 struct
 
-   let expr2str (e:symexpr) : string= 
-      let rec _expr2str (e:symexpr) : string = 
+   let expr2str (e:symexpr) : string=
+      let rec _expr2str (e:symexpr) : string =
          let exprlst2str (fn:'a -> string -> string) (lst:'a list) : string =
             match lst with
             | h::t -> List.fold_right fn  t (_expr2str h)
             | [] -> ""
          in
+         let op2str x a b = match x with
+          | Exp -> a^"^"^b
+          | Div -> a^"/"^b
+          | Eq -> "Eq("^a^","^b^")"
+         in
+         let op1str x a = match x with
+          | Paren -> "("^a^")"
+          | Cos -> "cos("^a^")"
+          | Sin -> "sin("^a^")"
+          | Tan -> "tan("^a^")"
+          | Neg -> "-("^a^")"
+          | NatExp -> "exp("^a^")"
+          | Deriv(wrt) -> "Derivative("^a^
+             (List.fold_right (
+                fun (v,n) r ->
+                   let sn = string_of_int n in
+                   r^","^v^","^sn
+             ) wrt "")^")"
+          | Integral(wrt) -> "Integral("^(a)^","^(wrt)^")"
+         in
+         let opnstr x lst = match x with
+          | Add -> exprlst2str (fun x r ->r^"+"^(_expr2str x)) lst
+          | Sub -> exprlst2str (fun x r ->r^"-"^(_expr2str x)) lst
+          | Mult -> exprlst2str (fun x r ->r^"*"^(_expr2str x)) lst
+          | Function(n) -> n^"("^(exprlst2str (fun x r ->r^","^(_expr2str x)) lst)^")"
+         in
          match e with
          | Symbol(name) -> name
-         | Integral(e,s) -> "Integral("^(_expr2str e)^","^(s)^")"
-         | Cos(e) -> "cos("^(_expr2str e)^")"
-         | Sin(e) -> "sin("^(_expr2str e)^")"
-         | Tan(e) -> "tan("^(_expr2str e)^")"
-         | Mult(es) -> exprlst2str (fun x r ->r^"*"^(_expr2str x)) es 
-         | Add(es) -> exprlst2str (fun x r ->r^"+"^(_expr2str x)) es 
-         | Exp(a,b) -> (_expr2str (Paren a))^"^"^(_expr2str (Paren b))
-         | NatExp(a) -> "exp("^(_expr2str (Paren a))^")"
-         | Sub(es)  -> exprlst2str (fun x r ->r^"-"^(_expr2str x)) es
-         | Paren(e) -> "("^(_expr2str e)^")" 
+         | Op1(op,ex) -> let nex = _expr2str ex in op1str op nex
+         | Op2(op,e1,e2) -> let ne1 = _expr2str e1 and ne2 = _expr2str e2 in
+            op2str op ne1 ne2
          | Decimal(x) -> string_of_float x
          | Integer(x) -> string_of_int x
-         | Div(n,d) -> (_expr2str (Paren n))^"/"^(_expr2str (Paren d))
-         | Function(x,lst) -> x^"("^(exprlst2str (fun x r -> r^","^(_expr2str x)) lst)^")"
-         | Deriv(e,lst) -> "Derivative("^(_expr2str e)^
-            (List.fold_right (
-               fun (v,n) r -> 
-                  let sn = string_of_int n in
-                  r^","^v^","^sn
-            ) lst "")^")"
-         | Eq(lhs,rhs) -> "Eq("^(_expr2str lhs)^","^(_expr2str rhs)^")"
-      in 
+         | OpN(opn,en) -> opnstr opn en 
+      in
          _expr2str e
 
    let rec get_vars (s:symexpr) : string list =
       let get_vars_explst (e:symexpr list) =
          List.fold_right (fun x r-> (get_vars x) @ r) e []
       in
-      match s with 
+      match s with
       | Symbol(e) -> [e]
-      | Integral(e,v) -> get_vars e
-      | Cos(e) -> get_vars e
-      | Sin(e) -> get_vars e
-      | Tan(e) -> get_vars e 
-      | Mult(e) -> get_vars_explst e
-      | Add(e) -> get_vars_explst e 
-      | Exp(e,t) -> get_vars_explst [e;t]
-      | Div(a,b) -> get_vars_explst [a;b]
-      | Deriv(e,v) -> get_vars e 
-      | NatExp(e) -> get_vars e
-      | Sub(e) -> get_vars_explst e 
-      | Paren(e) -> get_vars e 
+      | Op1(_, e) -> get_vars e
+      | Op2(_,e1,e2) -> get_vars_explst [e1;e2]
+      | OpN(_,elst) -> get_vars_explst elst
       | Decimal(_) -> []
-      | Integer(_) -> [] 
-      | Function(x,e) -> x::(get_vars_explst e)
-      | Eq(a,b) -> get_vars_explst [a;b]
+      | Integer(_) -> []
 
 end

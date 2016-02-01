@@ -33,13 +33,13 @@ res = e1.match(e2)
 print res
 
 print "-- match 3 --"
-e1 = x
+e1 = x**3
 e2 = (a/b)**n
 res = e1.match(e2)
 print res
 
 
 print "-- sub 1 --"
-e1 = Eq(c,a+b)
+e1 = Eq(c,a+b*1.)
 res = srepr(e1.subs([(a,x),(b,y)]))
 print res

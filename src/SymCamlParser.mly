@@ -2,7 +2,7 @@
 
 open Printf
 open SymCamlData
- 
+
 
 %}
 
@@ -36,19 +36,19 @@ kwarg:
    | TOKEN EQ TOKEN {let key = $1 and vl = $3 in (key,vl)}
    | TOKEN EQ INTEGER {let key = $1 and vl = string_of_int $3 in (key,vl)}
    | TOKEN EQ DECIMAL {let key = $1 and vl = string_of_float $3 in (key,vl)}
-   
+
 arglist:
    | symexp {let a = $1 in ([a],[])}
    | symexp COMMA arglist {
-		let t = $1 and (args, kwargs) = $3 in 
+		let t = $1 and (args, kwargs) = $3 in
 		(t::args, kwargs)
 	}
    | kwarg {
-		let (key,vl) = $1 in 
+		let (key,vl) = $1 in
 		([],[(key,vl)])
 	}
    | kwarg COMMA arglist {
-		let (key,vl) = $1 and (args,kwargs) = $3 in 
+		let (key,vl) = $1 and (args,kwargs) = $3 in
 		(args, (key,vl)::kwargs)
 	}
 ;
@@ -62,14 +62,14 @@ symexp:
       Symbol(varname)
     else if name = "Wild" then
       Symbol(varname)
-    else 
+    else
       raise (SymCamlParserError ("only symbols can have token arguments: "^name^":"^varname))
   }
   | TOKEN OPARAN INTEGER CPARAN {
     let name = $1 and value = $3 in
     if name = "Integer" then
       Integer(value)
-    else 
+    else
       raise (SymCamlParserError "only integers can have int arguments")
   }
   | TOKEN OPARAN INTEGER COMMA INTEGER CPARAN {
@@ -78,37 +78,37 @@ symexp:
       let fnumer : float = float(numer) and fdenom : float = float(denom) in
       let res : float = fnumer /. fdenom in
       Decimal(res)
-    else 
+    else
       raise (SymCamlParserError "only numerators can have two int arguments")
   }
   | TOKEN OPARAN QTOKEN COMMA arglist CPARAN {
     let name = $1 and value = float_of_string $3 in
     if name = "Float" then
       Decimal(value)
-    else 
+    else
       raise (SymCamlParserError "only XXX can have decimal arguments")
   }
   | TOKEN OPARAN arglist CPARAN {
     let name = $1 and (lst,kwlst) = $3 in
     match (name,List.length lst) with
-    | ("Pow",2) -> Exp(List.nth lst 0,List.nth lst 1)
-    | ("Add",_) -> Add(lst)
-    | ("Mul",_) -> Mult(lst)
-    | ("Equality",2) -> Eq(List.nth lst 0,List.nth lst 1)
-    | ("Derivative",_) -> 
+    | ("Pow",2) -> Op2(Exp, List.nth lst 0,List.nth lst 1)
+    | ("Add",_) -> OpN(Add,lst)
+    | ("Mul",_) -> OpN(Mult,lst)
+    | ("Equality",2) -> Op2(Eq,List.nth lst 0,List.nth lst 1)
+    | ("Derivative",_) ->
       begin
-      match lst with 
-      | vexpr::arglist -> 
+      match lst with
+      | vexpr::arglist ->
         let rec proc_lst l :(symvar*int) list = match l with
           | Symbol(x)::Integer(i)::t -> (x,i)::(proc_lst t)
           | Symbol(x)::[]-> [(x,1)]
           | _ -> raise (SymCamlParserError "derivative requires symbol-int pattern.")
         in
-        let derivs = proc_lst arglist in 
-          Deriv(vexpr, derivs)
+        let derivs = proc_lst arglist in
+          Op1(Deriv(derivs),vexpr)
       | [] -> raise (SymCamlParserError "derivative requires expression.")
       end
-    | (n,l) -> raise (SymCamlParserError 
+    | (n,l) -> raise (SymCamlParserError
       ("unexpected function "^n^" or number of arguments "^(string_of_int l)))
   }
 ;

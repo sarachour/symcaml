@@ -6,12 +6,13 @@ open SymCamlData
 open SymCamlParser
 open SymCamlLexer
 
+type symcaml = {
+    w : PyCamlWrapper.wrapper ref;
+    debug: bool ref;
+}
+ 
 module SymCaml :
 sig
-   type symcaml = {
-      w : PyCamlWrapper.wrapper ref;
-      debug: bool ref;
-   }
    val init : unit -> symcaml
    val set_debug : symcaml -> bool -> unit
    val define_symbol : symcaml ->  string -> symexpr
@@ -30,10 +31,6 @@ sig
    val report : symcaml -> unit
 end =
 struct
-   type symcaml = {
-      w : PyCamlWrapper.wrapper ref;
-      debug: bool ref;
-   }
    let _wr (s:symcaml) : PyCamlWrapper.wrapper ref = (s.w)
    let _wrc (s:symcaml) : PyCamlWrapper.wrapper = (!(_wr s))
    let _print (o:pyobject) : string = (PyCamlWrapper.cast_pyobj2str o)

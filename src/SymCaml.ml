@@ -10,7 +10,7 @@ type symcaml = {
     w : PyCamlWrapper.wrapper ref;
     debug: bool ref;
 }
- 
+
 module SymCaml :
 sig
    val init : unit -> symcaml

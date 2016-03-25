@@ -11,6 +11,9 @@ type symcaml = {
     debug: bool ref;
 }
 
+exception SymCamlError of (string)
+let error n msg = raise (SymCamlError(n^": "^msg))
+
 module SymCaml :
 sig
    val init : unit -> symcaml
@@ -21,6 +24,7 @@ sig
    val define_function: symcaml -> string -> symexpr
    val clear : symcaml -> unit
    val expr2py : symcaml -> symexpr -> string
+   val expr2str : symexpr -> string
 
    val expand : symcaml -> symexpr -> symexpr
    val eval : symcaml -> symexpr -> symexpr
@@ -56,6 +60,8 @@ struct
    let set_debug s b =
       s.debug := b; ()
 
+   let expr2str e = SymExpr.expr2str e
+
    let expr2py (s:symcaml) (e:symexpr) : string=
       let rec _expr2py (e:symexpr) : string =
          let exprlst2py (fn:string -> string -> string) (lst:symexpr list) : string =
@@ -88,7 +94,7 @@ struct
         | Add -> exprlst2py (fun x r ->r^"+"^x) lst
         | Sub ->  exprlst2py (fun x r ->r^"-"^x) lst
         | Mult ->  exprlst2py (fun x r ->r^"*"^x) lst
-        | Function(n) -> n^"("^(exprlst2py (fun x r ->r^","^x) lst)^")"
+        | _ -> error "opn2str" "unexpected"
         in
          match e with
          | Symbol(name) -> let (n,obj) = PyCamlWrapper.get_var (_wr s) name in n
@@ -96,6 +102,9 @@ struct
          | Op1(op,e) -> let ne = _expr2py (Op1(Paren,e)) in op12pyexpr op ne
          | Op2(op,e1,e2) -> let ne1 = _expr2py (Op1(Paren,e1)) and ne2 = _expr2py (Op1(Paren,e2)) in
           op2str op ne1 ne2
+         | OpN(Function(name),lst) ->
+           let (n,obj) = PyCamlWrapper.get_var (_wr s) name in
+           n^"("^(exprlst2py (fun x r ->r^","^x) lst)^")"
          | OpN(op,elst) ->  opn2str op elst
          | Decimal(x) -> string_of_float x
          | Integer(x) -> string_of_int x
@@ -150,7 +159,7 @@ struct
                result
             with
                |SymCamlData.SymCamlParserError(msg) -> raise (SymCamlException ("for equation:"^(strrep)^"\nparse error:"^msg))
-               |e -> Printf.printf "%s\n----\n" strrep; raise e
+               |e -> Printf.printf "\n-------\nEQN: %s\n----\n" strrep; raise e
             end
          | None -> raise (SymCamlFunctionException("pyobj2expr/srepr","unexpected: null result."))
 
@@ -191,6 +200,10 @@ struct
    *)
    let subs (s:symcaml) (e:symexpr) (sub:(symexpr*symexpr) list) : symexpr =
       dbg s (fun () -> Printf.printf "subs: beginning");
+      match e with 
+      | Integer(_) -> e 
+      | Decimal(_) -> e
+      | _ -> 
       let callee : pyobject=
          match PyCamlWrapper.eval (_wr s) (expr2py s (Op1(Paren,e))) with
          |Some(obj) -> obj

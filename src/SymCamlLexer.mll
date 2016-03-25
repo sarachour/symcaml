@@ -16,6 +16,7 @@ rule main = parse
   | ['('] {OPARAN}
   | [')'] {CPARAN}
   | ['"'] {QUOTE}
+  | "Function" {FUNCTION}
   | token as word {
      flush_all();
      TOKEN(word)

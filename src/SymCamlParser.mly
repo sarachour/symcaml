@@ -12,7 +12,7 @@ open SymCamlData
 %token <string> QTOKEN
 %token <float> DECIMAL
 %token <int> INTEGER
-%token COMMA OPARAN CPARAN EOF QUOTE EQ
+%token COMMA OPARAN CPARAN EOF QUOTE EQ FUNCTION
 
 
 
@@ -56,6 +56,10 @@ arglist:
 
 
 symexp:
+  | FUNCTION OPARAN QTOKEN CPARAN OPARAN arglist CPARAN {
+    let varname = $3 and (lst,kwlst)  = $6 in
+    OpN(Function(varname), lst)
+  }
   | TOKEN OPARAN QTOKEN CPARAN {
     let name = $1 and varname = $3 in
     if name = "Symbol" then

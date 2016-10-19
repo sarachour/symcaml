@@ -11,7 +11,7 @@ sig
       mutable tmp: pyobject;
    }
    val print_info : unit -> unit
-   val init: (string*string) list -> wrapper
+   val init: (string) list -> wrapper
    val define: wrapper ref -> string -> string -> pyobject
    val define_tmp_var: wrapper ref -> string -> string -> pyobject
    val invoke: wrapper ref -> string -> pyobject list -> (string*pyobject) list -> pyobject option
@@ -154,14 +154,14 @@ struct
       run("print repr(env);");
       run("print repr(tmp);")
 
-   let init (imports :(string*string) list) : wrapper =
+   let init (imports :(string) list) : wrapper =
       let modulename = "sympy" in
       py_setprogramname("_interp");
       handle_err();
       py_initialize();
       handle_err();
       let _ = List.map
-         (fun (x,x2) -> run("from "^x^" import "^x2))
+         (fun (x) -> run(x))
          imports
       in
       run("env = {}");

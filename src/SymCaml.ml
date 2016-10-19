@@ -49,7 +49,10 @@ struct
       else ()
 
    let init () =
-      let w = PyCamlWrapper.init [("sympy","*");("sympy.Expr","match")] in
+     let w = PyCamlWrapper.init [
+         ("from sympy import *")
+       ]
+     in
       let wr : PyCamlWrapper.wrapper ref = ref w in
       let dr : bool ref = ref (false) in
       {w=wr; debug=dr}
@@ -264,15 +267,15 @@ struct
       let ecmd = (expr2py s (Op1(Paren,e))) in
       let patcmd = (expr2py s (Op1(Paren,pat))) in
       dbg s (fun () -> Printf.printf "[pattern] match: %s -> %s" ecmd patcmd);
-      let eobj = PyCamlWrapper.eval  (_wr s) ecmd in
+      let eobj = PyCamlWrapper.eval  (_wr s) ("Expr("^ecmd^")") in
       dbg s (fun () -> Printf.printf "[pattern] eval: %s" ecmd);
-      let patobj = PyCamlWrapper.eval  (_wr s) patcmd in
+      let patobj = PyCamlWrapper.eval  (_wr s) ("Expr("^patcmd^")") in
       dbg s (fun () -> Printf.printf "[pattern] eval: %s" patcmd);
          match (eobj,patobj) with
          | (Some(texpr),Some(tpat)) ->
-            begin
+           begin
                dbg s (fun () -> Printf.printf "[pattern] invoke: %s" patcmd);
-               match PyCamlWrapper.invoke (_wr s) "match" [texpr;tpat] [] with
+               match PyCamlWrapper.invoke_from (_wr s) texpr "match" [tpat] [] with
                | Some(res) ->
                   begin
                   dbg s (fun () -> Printf.printf "[pattern] some result: %s" (PyCamlWrapper.pyobj2str res));

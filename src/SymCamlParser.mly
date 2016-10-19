@@ -115,6 +115,12 @@ symexp:
     | (n,l) -> raise (SymCamlParserError
       ("unexpected function "^n^" or number of arguments "^(string_of_int l)))
   }
+  | INTEGER {
+            Integer($1)
+  }
+  | DECIMAL {
+            Decimal($1)
+  }
 ;
 
 %%

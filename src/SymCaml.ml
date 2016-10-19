@@ -250,7 +250,7 @@ struct
       | Integer(0) -> true
       | _ -> false
 
-   let pattern (s:symcaml) (e:symexpr) (pat: symexpr) (simpl) : ((string*symexpr) list) option =
+   let pattern (s:symcaml) (e:symexpr) (pat: symexpr)  : ((string*symexpr) list) option =
       let transform (key,v) : (string*symexpr) =
          dbg s (fun () -> Printf.printf "[pattern]/el starting");
          let nk : string= _rprint key in

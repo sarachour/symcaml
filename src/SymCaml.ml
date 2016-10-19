@@ -49,7 +49,7 @@ struct
       else ()
 
    let init () =
-      let w = PyCamlWrapper.init ["sympy"] in
+      let w = PyCamlWrapper.init [("sympy","*");("sympy.Expr","match")] in
       let wr : PyCamlWrapper.wrapper ref = ref w in
       let dr : bool ref = ref (false) in
       {w=wr; debug=dr}
@@ -250,7 +250,7 @@ struct
       | Integer(0) -> true
       | _ -> false
 
-   let pattern (s:symcaml) (e:symexpr) (pat: symexpr) : ((string*symexpr) list) option =
+   let pattern (s:symcaml) (e:symexpr) (pat: symexpr) (simpl) : ((string*symexpr) list) option =
       let transform (key,v) : (string*symexpr) =
          dbg s (fun () -> Printf.printf "[pattern]/el starting");
          let nk : string= _rprint key in
@@ -272,7 +272,7 @@ struct
          | (Some(texpr),Some(tpat)) ->
             begin
                dbg s (fun () -> Printf.printf "[pattern] invoke: %s" patcmd);
-               match PyCamlWrapper.invoke_from (_wr s)  texpr "match" [tpat] [] with
+               match PyCamlWrapper.invoke (_wr s) "match" [texpr;tpat] [] with
                | Some(res) ->
                   begin
                   dbg s (fun () -> Printf.printf "[pattern] some result: %s" (PyCamlWrapper.pyobj2str res));

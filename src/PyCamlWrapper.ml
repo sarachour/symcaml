@@ -154,14 +154,14 @@ struct
       run("print repr(env);");
       run("print repr(tmp);")
 
-   let init (imports :string list) : wrapper =
+   let init (imports :(string,string) list) : wrapper =
       let modulename = "sympy" in
       py_setprogramname("_interp");
       handle_err();
       py_initialize();
       handle_err();
       let _ = List.map
-         (fun x -> run("from "^x^" import *"))
+         (fun (x,x2) -> run("from "^x^" import "^x2))
          imports
       in
       run("env = {}");

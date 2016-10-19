@@ -154,7 +154,7 @@ struct
       run("print repr(env);");
       run("print repr(tmp);")
 
-   let init (imports :(string,string) list) : wrapper =
+   let init (imports :(string*string) list) : wrapper =
       let modulename = "sympy" in
       py_setprogramname("_interp");
       handle_err();

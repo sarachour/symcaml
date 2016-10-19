@@ -11,7 +11,7 @@ sig
       mutable tmp: pyobject;
    }
    val print_info : unit -> unit
-   val init: string list -> wrapper
+   val init: (string*string) list -> wrapper
    val define: wrapper ref -> string -> string -> pyobject
    val define_tmp_var: wrapper ref -> string -> string -> pyobject
    val invoke: wrapper ref -> string -> pyobject list -> (string*pyobject) list -> pyobject option

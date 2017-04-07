@@ -67,7 +67,7 @@ struct
    let _tmp x = "tmp[\""^x^"\"]"
    let _uw w = !w
    let _get_dict_val (d:pyobject) (k:string) : pyobject option =
-      let x = pydict_getitemstring(d,k) in
+     let x = pydict_getitemstring(d,k) in
       handle_err();
       if x = null or x = none then None else Some(x)
 
@@ -170,6 +170,7 @@ struct
       py_setprogramname("_interp");
       handle_err();
       py_initialize();
+      print_info ();
       handle_err();
       let _ = List.map
          (fun (x) -> run(x))

@@ -4,6 +4,9 @@ all:build
 install:
 	ocaml setup.ml -install 
 
+remove:
+	ocaml setup.ml -uninstall
+
 build:setup.data setup.ml
 	ocaml setup.ml -build
 

@@ -4,7 +4,6 @@
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
 true: annot, bin_annot
-true: package(str,pycaml)
 <**/.svn>: -traverse
 <**/.svn>: not_hygienic
 ".bzr": -traverse

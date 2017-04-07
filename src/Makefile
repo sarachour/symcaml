@@ -8,6 +8,7 @@ test:
 
 remove:
 	ocaml setup.ml -uninstall
+	opam uninstall symcaml
 
 install:
 	ocaml setup.ml -install 

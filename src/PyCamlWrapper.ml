@@ -12,6 +12,8 @@ sig
    }
    val print_info : unit -> unit
    val init: (string) list -> wrapper
+   val get_python_home : unit -> string
+   val set_python_home : string -> unit 
    val define: wrapper ref -> string -> string -> pyobject
    val define_tmp_var: wrapper ref -> string -> string -> pyobject
    val invoke: wrapper ref -> string -> pyobject list -> (string*pyobject) list -> pyobject option
@@ -154,8 +156,17 @@ struct
       run("print repr(env);");
       run("print repr(tmp);")
 
+   let get_python_home () : string =
+     let home : string = py_getpythonhome () in
+     home
+
+   let set_python_home (x:string) : unit =
+     py_setpythonhome (x);
+     ()
+
    let init (imports :(string) list) : wrapper =
-      let modulename = "sympy" in
+      let modulename = "sympy" in 
+      (*py_setpythonhome("");*)
       py_setprogramname("_interp");
       handle_err();
       py_initialize();

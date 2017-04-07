@@ -6,6 +6,7 @@ install:
 
 remove:
 	ocaml setup.ml -uninstall
+	ocamlfind remove pycaml
 
 build:setup.data setup.ml
 	ocaml setup.ml -build

@@ -94,7 +94,6 @@ struct
 
    let print_info () =
       Printf.printf "At least python 3.1 required.";
-      Printf.printf "home: %s\n" (py_getpythonhome());
       Printf.printf "prefix:  %s\n" (py_getprefix());
       Printf.printf "eprefix: %s\n" (py_getexecprefix());
       Printf.printf "init: %d\n" (py_isinitialized());
@@ -170,7 +169,6 @@ struct
       py_setprogramname("_interp");
       handle_err();
       py_initialize();
-      print_info ();
       handle_err();
       let _ = List.map
          (fun (x) -> run(x))

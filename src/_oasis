@@ -9,5 +9,5 @@ Plugins:     META (0.4), StdFiles (0.4)
 Library symcaml
   Path:       .
   BuildTools: ocamlbuild
-  Modules:    SymCaml
+  Modules:    SymCaml,PyCamlWrapper,SymCamlData,SymCamlParser,SymCamlLexer
   BuildDepends: pycaml  

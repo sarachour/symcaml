@@ -6,6 +6,8 @@ test:
 	mv SymCaml.native symcaml_test
 	chmod +x symcaml_test
 
+remove:
+	ocaml setup.ml -uninstall
 
 install:
 	ocaml setup.ml -install 
@@ -20,4 +22,4 @@ setup.ml:_oasis
 	oasis setup -setup-update dynamic
 
 clean:
-	rm -f setup.* _oasis
+	rm -f setup.* 

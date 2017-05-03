@@ -6,7 +6,12 @@ open SymCamlData
 open SymCamlParser
 open SymCamlLexer
 
+type symcaml_version = 
+        | SV076 
+        | SVLegacy 
+
 type symcaml = {
+    version: symcaml_version;
     w : PyCamlWrapper.wrapper ref;
     debug: bool ref;
 }
@@ -16,7 +21,7 @@ let error n msg = raise (SymCamlError(n^": "^msg))
 
 module SymCaml :
 sig
-   val init : unit -> symcaml
+   val init : symcaml_version -> symcaml
    val set_debug : symcaml -> bool -> unit
    val define_symbol : symcaml ->  string -> symexpr
    val define_expr : symcaml -> string -> symexpr -> symexpr
@@ -48,14 +53,15 @@ struct
          end
       else ()
 
-   let init () =
+   let init (version:symcaml_version) =
      let w = PyCamlWrapper.init [
          ("from sympy import *")
        ]
      in
       let wr : PyCamlWrapper.wrapper ref = ref w in
       let dr : bool ref = ref (false) in
-      {w=wr; debug=dr}
+      {w=wr; debug=dr; version=version}
+      
 
    let clear s =
       PyCamlWrapper.clear (_wr s)
@@ -115,13 +121,19 @@ struct
          _expr2py e
 
    let define_symbol (s:symcaml) (x:string) : symexpr =
-      let cmd = "Symbol(\""^x^"\")" in
+           let cmd = match s.version with
+           | SV076 -> sprintf "symbols('%s')" x
+           | SVLegacy -> sprintf "Symbol('%s')" x
+           in
       dbg s (fun () -> Printf.printf "symbol: %s" cmd);
       let _ = PyCamlWrapper.define (_wr s) x cmd in
       (Symbol x)
 
    let define_function (s:symcaml) (x:string) : symexpr =
-      let cmd = "Function(\""^x^"\")" in
+      let cmd = match s.version with
+      | SV076 -> sprintf "symbols('%s', cls=Function)" x 
+      | SVLegacy -> sprintf "Function('%s')" x 
+      in
       dbg s (fun () -> Printf.printf "define_function: %s" cmd);
       let _ = PyCamlWrapper.define (_wr s) x cmd in
       (Symbol x)
@@ -141,7 +153,9 @@ struct
             "["^(List.fold_right fn t hn)^"]"
          | [] -> "[]"
       in
-      let cmd ="Wild(\""^x^"\",exclude="^opt_arg^")" in
+      let cmd = match s.version with
+      | _ -> sprintf "Wild('%s',exclude=%s)" x opt_arg
+      in 
       dbg s (fun () -> Printf.printf "define_wildcard: %s" cmd);
       let _ = PyCamlWrapper.define (_wr s) x cmd in
       Symbol(x)
@@ -268,14 +282,18 @@ struct
       let patcmd = (expr2py s (Op1(Paren,pat))) in
       dbg s (fun () -> Printf.printf "[pattern] match: %s -> %s" ecmd patcmd);
       let eobj = PyCamlWrapper.eval  (_wr s) ("Expr("^ecmd^")") in
-      dbg s (fun () -> Printf.printf "[pattern] eval: %s" ecmd);
       let patobj = PyCamlWrapper.eval  (_wr s) ("Expr("^patcmd^")") in
-      dbg s (fun () -> Printf.printf "[pattern] eval: %s" patcmd);
-         match (eobj,patobj) with
-         | (Some(texpr),Some(tpat)) ->
+      let bool_true = PyCamlWrapper.eval (_wr s) "True" in
+         match (eobj,patobj,bool_true) with
+         | (Some(texpr),Some(tpat),Some(true_arg)) ->
            begin
                dbg s (fun () -> Printf.printf "[pattern] invoke: %s" patcmd);
-               match PyCamlWrapper.invoke_from (_wr s) texpr "match" [tpat] [] with
+               let result = match s.version with
+               | SV076 -> PyCamlWrapper.invoke_from (_wr s) texpr "match" [tpat]
+               [("old",true_arg)]
+               | SVLegacy -> PyCamlWrapper.invoke_from (_wr s) texpr "match" [tpat] []  
+               in
+               match result with
                | Some(res) ->
                   begin
                   dbg s (fun () -> Printf.printf "[pattern] some result: %s" (PyCamlWrapper.pyobj2str res));

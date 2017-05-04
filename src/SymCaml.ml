@@ -21,7 +21,7 @@ let error n msg = raise (SymCamlError(n^": "^msg))
 
 module SymCaml :
 sig
-   val init : symcaml_version -> symcaml
+   val init : string option -> symcaml_version -> string option -> symcaml
    val set_debug : symcaml -> bool -> unit
    val define_symbol : symcaml ->  string -> symexpr
    val define_expr : symcaml -> string -> symexpr -> symexpr
@@ -53,8 +53,8 @@ struct
          end
       else ()
 
-   let init (version:symcaml_version) =
-     let w = PyCamlWrapper.init [
+   let init (prog:string option) (version:symcaml_version) (home:string option) =
+     let w = PyCamlWrapper.init prog home [
          ("from sympy import *")
        ]
      in

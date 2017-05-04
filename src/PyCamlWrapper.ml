@@ -11,9 +11,8 @@ sig
       mutable tmp: pyobject;
    }
    val print_info : unit -> unit
-   val init: (string) list -> wrapper
+   val init: string option -> string option -> (string) list -> wrapper
    val get_python_home : unit -> string
-   val set_python_home : string -> unit 
    val define: wrapper ref -> string -> string -> pyobject
    val define_tmp_var: wrapper ref -> string -> string -> pyobject
    val invoke: wrapper ref -> string -> pyobject list -> (string*pyobject) list -> pyobject option
@@ -93,11 +92,12 @@ struct
    let is_null e = e = null
 
    let print_info () =
-      Printf.printf "At least python 3.1 required.";
+      Printf.printf "At least python 3.1 required.\n";
       Printf.printf "prefix:  %s\n" (py_getprefix());
       Printf.printf "eprefix: %s\n" (py_getexecprefix());
       Printf.printf "init: %d\n" (py_isinitialized());
-      Printf.printf "mpath: %s\n" (py_getpath());
+      Printf.printf "path: %s\n" (py_getpath());
+      Printf.printf "prog: %s\n" (py_getprogramname());
       Printf.printf "version: %s\n" (py_getversion());
       Printf.printf "----------"
 
@@ -159,28 +159,33 @@ struct
      let home : string = py_getpythonhome () in
      home
 
-   let set_python_home (x:string) : unit =
-     py_setpythonhome (x);
-     ()
+   
 
-   let init (imports :(string) list) : wrapper =
-      let modulename = "sympy" in 
-      (*py_setpythonhome("");*)
-      py_setprogramname("_interp");
-      handle_err();
-      py_initialize();
-      handle_err();
-      let _ = List.map
-         (fun (x) -> run(x))
-         imports
-      in
-      run("env = {}");
-      run("tmp = {}");
-      let mdl = pyimport_addmodule("__main__") in
-      handle_err();
-      let venv = _throw_if_null "init env" (_get_obj_val mdl "env") in
-      let tmp = _throw_if_null "init tmp" (_get_obj_val mdl "tmp") in
-      {main=mdl;venv=venv; tmp=tmp}
+   let init (prog:string option) (home:string option) (imports :(string) list) : wrapper =
+     let modulename = "sympy" in
+     begin
+       match prog with
+       | Some(prog) -> py_setprogramname(prog)
+       | None -> ()
+     end;
+     begin
+       match home with
+       | Some(home) -> py_setpythonhome(home)
+       | None -> ()
+     end;
+     handle_err();
+     py_initialize();
+     handle_err();
+     print_info();
+     handle_err();
+     List.map (fun (x) -> run(x)) imports;
+     run("env = {}");
+     run("tmp = {}");
+     let mdl = pyimport_addmodule("__main__") in
+     handle_err();
+     let venv = _throw_if_null "init env" (_get_obj_val mdl "env") in
+     let tmp = _throw_if_null "init tmp" (_get_obj_val mdl "tmp") in
+     {main=mdl;venv=venv; tmp=tmp}
 
    let eval (w:wrapper ref) (cmd) : pyobject option =
       let _ = _clrtmp w in

@@ -6,9 +6,10 @@ open SymCamlData
 open SymCamlParser
 open SymCamlLexer
 
-type symcaml_version = 
-        | SV076 
-        | SVLegacy 
+type symcaml_version =
+  | SV100
+  | SV076 
+  | SVLegacy 
 
 type symcaml = {
     version: symcaml_version;
@@ -22,6 +23,8 @@ let error n msg = raise (SymCamlError(n^": "^msg))
 module SymCaml :
 sig
    val init : string option -> symcaml_version -> string option -> symcaml
+
+   val string_of_repr : string -> symexpr 
    val set_debug : symcaml -> bool -> unit
    val define_symbol : symcaml ->  string -> symexpr
    val define_expr : symcaml -> string -> symexpr -> symexpr
@@ -75,7 +78,10 @@ struct
       let rec _expr2py (e:symexpr) : string =
          let exprlst2py (fn:string -> string -> string) (lst:symexpr list) : string =
             match lst with
-            | h::t -> List.fold_right (fun x r -> let nx = _expr2py (Op1(Paren,x)) in fn nx r )  t (_expr2py (Op1(Paren,h)))
+              | h::t -> List.fold_right
+                          (fun x r ->
+                             let nx = _expr2py (Op1(Paren,x)) in fn nx r
+                          )  t (_expr2py (Op1(Paren,h)))
             | [] -> ""
          in
          let op12pyexpr op e = match op with
@@ -106,7 +112,9 @@ struct
         | _ -> error "opn2str" "unexpected"
         in
          match e with
-         | Symbol(name) -> let (n,obj) = PyCamlWrapper.get_var (_wr s) name in n
+         | Symbol(name) ->
+           PyCamlWrapper.to_env_var name 
+           (*let (n,obj) = PyCamlWrapper.get_var (_wr s) name in n*)
          | Op1(Paren,e) -> let ne = _expr2py (e) in op12pyexpr Paren ne
          | Op1(op,e) -> let ne = _expr2py (Op1(Paren,e)) in op12pyexpr op ne
          | Op2(op,e1,e2) -> let ne1 = _expr2py (Op1(Paren,e1)) and ne2 = _expr2py (Op1(Paren,e2)) in
@@ -121,28 +129,34 @@ struct
          _expr2py e
 
    let define_symbol (s:symcaml) (x:string) : symexpr =
-           let cmd = match s.version with
-           | SV076 -> sprintf "symbols('%s')" x
-           | SVLegacy -> sprintf "Symbol('%s')" x
-           in
-      dbg s (fun () -> Printf.printf "symbol: %s" cmd);
-      let _ = PyCamlWrapper.define (_wr s) x cmd in
-      (Symbol x)
+     let cmd = match s.version with
+        | SV100 -> sprintf "Symbol(\"%s\")" x
+        | SV076 -> sprintf "symbols(\"%s\")" x
+        | SVLegacy -> sprintf "Symbol(\"%s\")" x
+     in
+     dbg s (fun () -> Printf.printf "define_symbol: %s" cmd);
+     let _ = PyCamlWrapper.define (_wr s) x cmd in
+     (Symbol x)
 
    let define_function (s:symcaml) (x:string) : symexpr =
-      let cmd = match s.version with
-      | SV076 -> sprintf "symbols('%s', cls=Function)" x 
-      | SVLegacy -> sprintf "Function('%s')" x 
-      in
-      dbg s (fun () -> Printf.printf "define_function: %s" cmd);
-      let _ = PyCamlWrapper.define (_wr s) x cmd in
-      (Symbol x)
+     let cmd = match s.version with
+       | SV100 -> sprintf "Function(\"%s\")" x 
+       | SV076 -> sprintf "symbols(\"%s\", cls=Function)" x 
+       | SVLegacy -> sprintf "Function(\"%s\")" x 
+     in
+     dbg s (fun () -> Printf.printf "define_function: %s" cmd);
+     let _ = PyCamlWrapper.define (_wr s) x cmd in
+     (Symbol x)
 
    let define_expr (s:symcaml) (x:string) (e:symexpr) =
       let stre = expr2py s e in
       let _ = PyCamlWrapper.define (_wr s) x stre in
-      dbg s (fun () -> Printf.printf "define_expr: %s" stre);
       Symbol(x)
+
+   let string_of_repr (strrep:string) : symexpr =
+     let lexbuf = Lexing.from_string strrep in
+     let result = SymCamlParser.main SymCamlLexer.main lexbuf in
+     result
 
    let define_wildcard (s:symcaml) (x:string) (exns:symexpr list) : symexpr =
       let opt_arg = match exns with
@@ -154,7 +168,7 @@ struct
          | [] -> "[]"
       in
       let cmd = match s.version with
-      | _ -> sprintf "Wild('%s',exclude=%s)" x opt_arg
+      | _ -> sprintf "Wild(\"%s\",exclude=%s)" x opt_arg
       in 
       dbg s (fun () -> Printf.printf "define_wildcard: %s" cmd);
       let _ = PyCamlWrapper.define (_wr s) x cmd in
@@ -249,17 +263,22 @@ struct
 
 
    let simpl (s:symcaml) (e:symexpr) =
-      let cmd = (expr2py s (Op1(Paren,e))) in
-      let callee = PyCamlWrapper.eval  (_wr s) cmd in
-         match callee with
-         | Some(x) ->
-            begin
-            match PyCamlWrapper.invoke (_wr s)  "simplify" [x] [] with
-               | Some(res) ->  let repr = _pyobj2expr s res in repr
-               | None -> raise (SymCamlFunctionException("simpl","unexpected: null result."))
-            end
-         | None-> raise (SymCamlFunctionException("simpl","unexpected: null callee."))
-
+     let cmd = (expr2py s (Op1(Paren,e))) in
+     print_string ("< "^cmd^" >\n");
+     let callee = PyCamlWrapper.eval  (_wr s) cmd in
+     match callee with
+     | Some(x) ->
+       begin
+         let result = match s.version with
+           | SV100 -> PyCamlWrapper.invoke (_wr s)  "simplify" [x] []
+           | _ -> PyCamlWrapper.invoke (_wr s)  "simplify" [x] []
+         in
+         match result with
+         | Some(res) ->  let repr = _pyobj2expr s res in repr
+         | None -> raise (SymCamlFunctionException("simpl","unexpected: null result."))
+       end
+     | None-> raise (SymCamlFunctionException("simpl","unexpected: null callee."))
+                
    let eq (s:symcaml) (lhs:symexpr) (rhs:symexpr) =
       let expr = OpN(Sub,[Op1(Paren,lhs);Op1(Paren,rhs)]) in
       let res = simpl s expr in

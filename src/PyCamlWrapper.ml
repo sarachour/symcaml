@@ -19,6 +19,7 @@ sig
    val invoke_from: wrapper ref -> pyobject -> string -> pyobject list -> (string*pyobject) list -> pyobject option
    val clear: wrapper ref -> unit
    val eval: wrapper ref -> string -> pyobject option
+   val to_env_var : string -> string
    val get_var : wrapper ref -> string -> (string*pyobject)
    val get_tmp_var : wrapper ref -> string -> (string*pyobject)
    val list2tuple: pyobject list -> pyobject
@@ -48,13 +49,13 @@ struct
          let trace = null in
          let typ = pyerr_occurred () in
          if typ <> null then
-          begin
-			  pyerr_print();
-			  pyerr_printex 1;
-			  raise (PyCamlWrapperException "python error")
-          end
+           begin
+			       pyerr_print();
+			       pyerr_printex 1;
+			       raise (PyCamlWrapperException ("python error:"))
+           end
          else
-            ()
+           ()
 
    let run x =
       let _ = pyrun_simplestring(x) in
@@ -196,6 +197,9 @@ struct
       let res = pydict_getitemstring((_uw w).tmp, tvar) in
       if res = null then None else Some(res)
 
+
+   let to_env_var (name:string) =
+     _env name
 
    let get_var (w:wrapper ref) (name:string) =
       let n = _env name in
